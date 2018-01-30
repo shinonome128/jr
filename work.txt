@@ -37,6 +37,7 @@ train.data.itoigawa <- as.data.table(
         filter(train.data$停車駅名 == "糸魚川")
 )
 
+
 # 列名変更
 var1 <- c("toyama年月日","toyama列車番号","toyama停車駅名","toyamaフェンダー部分(東京方向)","toyama台車部分","toyamaフェンダー部分(金沢方向)","toyama合計")
 var2 <- c("itoigawa年月日","itoigawa列車番号","itoigawa停車駅名","itoigawaフェンダー部分(東京方向)","itoigawa台車部分","itoigawaフェンダー部分(金沢方向)","itoigawa合計")
@@ -52,6 +53,21 @@ diagram.data.kanazawa_to_toyama <- diagram.data[c(1, 3), ]
 train.time <- train.data.toyama
 train.time$kanazawaTime <- as.character()
 train.time$toyamaTime <- as.character()
+
+
+# ダイヤ表の行と列を入れ替える
+
+diagram.data.kanazawa_to_toyama.t <- as.data.frame(
+    t(diagram.data.kanazawa_to_toyama)
+)
+
+
+
+
+
+
+
+
 
 
 # 1日1回と1日2回のデータがありそう
@@ -290,21 +306,110 @@ train.time$toyamaTime <- as.character()
 
 
 
+# ダイヤ表の行と列を入れ替える
+
+## 参照元
+https://qiita.com/emihat/items/1130b15152621a5e37f5
+
+## 動作
+```
+t(データフレーム)
+```
+行と列を入れ替える
+
+ただしデータ形式がマトリックス型になってしまう
+なのでas.data.frame()でデータ形式を再度戻す
+```
+as.data.frame(t(データフレーム))
+```
+
+
+## 例
+> hoge
+  停車場名 3500E 552E 3502E 9536E 554E 3504E 556E 3506E 558E 3508E  560E 8526E  562E  564E 8528E  566E 9582E  568E 3510E  570E 3512E  572E 8530E 3514E  574E 8532E  576E 3516E  578E 3518E  590E
+1     金沢  6:00 6:13  7:00  7:08 7:23  7:48 8:23  8:48 9:21  9:46 10:56 11:46 11:56 12:56 13:46 13:56 14:23 14:50 15:55 16:09 16:47 16:49 17:07 17:55 18:09 18:47 19:02 19:18 20:17 21:00 21:35
+3     富山  6:19 6:37  7:19  7:32 7:47  8:07 8:47  9:07 9:45 10:05 11:19 12:06 12:19 13:19 14:06 14:19 14:47 15:13 16:15 16:33 17:06 17:13 17:26 18:15 18:32 19:07 19:25 19:37 20:41 21:20 21:58
+> 
+> 
+> hoge2 <- as.data.frame(
++     t(hoge)
++ )
+> 
+> hoge2
+             1     3
+停車場名  金沢  富山
+3500E     6:00  6:19
+552E      6:13  6:37
+3502E     7:00  7:19
+9536E     7:08  7:32
+554E      7:23  7:47
+3504E     7:48  8:07
+556E      8:23  8:47
+3506E     8:48  9:07
+558E      9:21  9:45
+3508E     9:46 10:05
+560E     10:56 11:19
+8526E    11:46 12:06
+562E     11:56 12:19
+564E     12:56 13:19
+8528E    13:46 14:06
+566E     13:56 14:19
+9582E    14:23 14:47
+568E     14:50 15:13
+3510E    15:55 16:15
+570E     16:09 16:33
+3512E    16:47 17:06
+572E     16:49 17:13
+8530E    17:07 17:26
+3514E    17:55 18:15
+574E     18:09 18:32
+8532E    18:47 19:07
+576E     19:02 19:25
+3516E    19:18 19:37
+578E     20:17 20:41
+3518E    21:00 21:20
+590E     21:35 21:58
+> 
+
+以上
+
+diagram.data.kanazawa_to_toyama.t <- as.data.frame(
+    t(diagram.data.kanazawa_to_toyama)
+)
+
+
+
+
 
 # 車両データから一致する時刻を代入する、vlookup()的な動きをさせたい
 
 
+## 参照元
+http://days.tokyosomewhere.com/r-vlookup
 
 
+merge関数でvlookupと同様の処理が可能
 
 
+# 列名をそろえる
+
+colnames(hoge2) <- c("kanazawaTime", "toyamaTime")
+
+> head(hoge2)
+         kanazawaTime toyamaTime
+停車場名         金沢       富山
+3500E            6:00       6:19
+552E             6:13       6:37
+3502E            7:00       7:19
+9536E            7:08       7:32
+554E             7:23       7:47
+> 
+
+merge(hoge, hoge2, by = "toyama列車番号")
 
 
-
-
-
-
-
+列名が自動生成されるので前の列名追加処理は無くす
+結果が車両でソートされているので日付と時刻でソート
 
 
 
