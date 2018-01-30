@@ -1,73 +1,120 @@
-# 富山と糸魚川に停車した列車データを抽出
+# コード
 
-library(dplyr)
 library(data.table)
-
-# 富山駅データ抽出
-
-train.data.toyama <- as.data.table(
-    train.data %>%
-        filter(train.data$停車駅名 == "富山")
-)
-
-# 糸魚川データ抽出
-
-train.data.itoigawa <- as.data.table(
-    train.data %>%
-        filter(train.data$停車駅名 == "糸魚川")
-)
-
-# 列名変更
-
-var1 <- c("toyama年月日","toyama列車番号","toyama停車駅名","toyamaフェンダー部分(東京方向)","toyama台車部分","toyamaフェンダー部分(金沢方向)","toyama合計")
-var2 <- c("itoigawa年月日","itoigawa列車番号","itoigawa停車駅名","itoigawaフェンダー部分(東京方向)","itoigawa台車部分","itoigawaフェンダー部分(金沢方向)","itoigawa合計")
-colnames(train.data.toyama) <- var1
-colnames(train.data.itoigawa) <- var2
+library(dplyr)
+library(stringr)
 
 
-# ダイヤ情報から金沢発と富山着時間を取得
+# 金沢、富山の気象データを抽出
 
-diagram.data.kanazawa_to_toyama <- diagram.data[c(1, 3), ]
+weather.data.kanazawa <- weather.data %>%
+    filter(weather.data$地点 == "金沢")
 
-
-# 富山の着雪量データに金沢発と富山着の時刻の列を追加
-
-train.time <- train.data.toyama
-
-
-# ダイヤ表の行と列を入れ替える
-
-diagram.data.kanazawa_to_toyama.t <- as.data.frame(
-    t(diagram.data.kanazawa_to_toyama)
-)
+weather.data.toyama <- weather.data %>%
+    filter(weather.data$地点 == "富山")
 
 
-# マージ用に車両列と列名をつける
+# 金沢、富山の気象データのうち、訓練データを抽出
 
-var3 <- rownames(diagram.data.kanazawa_to_toyama.t)
-diagram.data.kanazawa_to_toyama.t$toyama列車番号 <- var3
-colnames(diagram.data.kanazawa_to_toyama.t) <- c("kanazawaTime", "toyamaTime", "toyama列車番号")
+weather.data.kanazawa.2016 <- as.data.table(weather.data.kanazawa) %>%
+    filter(
+        str_detect(年月日時, "2016")
+    )
 
-
-# マージ
-
-train.time.merge <-
-merge(train.time, diagram.data.kanazawa_to_toyama.t, by = "toyama列車番号")
-
-
-# 結果が車両でソートされているので日付と時刻でソート
-
-train.time.merge.sort <-
-    train.time.merge[order(train.time.merge$toyama年月日, train.time.merge$kanazawaTime), ]
+weather.data.toyama.2016 <- as.data.table(weather.data.toyama) %>%
+    filter(
+        str_detect(年月日時, "2016")
+    )
 
 
-# Rで最後に行番号を振りなおす
-
-rownames(train.time.merge.sort) <- c(1:nrow(train.time.merge.sort))
 
 
-# マスターデータの保存
 
-train.master <- train.time.merge.sort
+
+
+
+
+
+
+#####################################
+
+# 気象データ処理
+
+着雪量データ
+学習期間：2016/1/19～2016/12/31
+予測期間：2017/1/1～2017/3/31
+
+
+金沢、富山、糸魚川の3地点
+2015/12/1～2016/3/31
+2016/12/1～2017/3/31
+
+
+# 方針
+糸魚川は捨てる
+
+訓練データ
+2016/1/19-2016/12/31 金沢、富山の気象データを抽出
+
+テストデータ
+2017/1/1-2017/3/31 金沢、富山の気象データを抽出
+
+
+# 金沢、富山の気象データを抽出
+
+weather.data.kanazawa <- weather.data %>%
+    filter(weather.data$地点 == "金沢")
+
+weather.data.toyama <- weather.data %>%
+    filter(weather.data$地点 == "富山")
+
+
+# 金沢、富山の気象データのうち、訓練データを抽出
+
+library(stringr)
+
+weather.data.kanazawa.2016 <- as.data.table(weather.data.kanazawa) %>%
+    filter(
+        str_detect(年月日時, "2016")
+    )
+
+
+weather.data.toyama.2016 <- as.data.table(weather.data.toyama) %>%
+    filter(
+        str_detect(年月日時, "2016")
+    )
+
+# train.masterと気象データの結合方法検討
+
+キーとなる列を作って合体させる
+何をキーとするか
+
+日付と時間の場合
+train.master
+toyama年月日	kanazawaTime
+2016-01-19	10:56
+
+weather.data.kanazawa.2016
+年月日時
+2016/1/19 11:00
+
+
+車両？
+train.master
+toyama列車番号
+560E
+
+weather.data.kanazawa.2016
+ダイヤに紐づいた時間
+
+時間の方が処理が楽そうなので、train.masterとweather.data.kanazawa.2016の時間が同じになるように処理
+時間のフィールドでデータを結合する
+
+
+# train.masterの時刻操作
+
+
+
+
 
 
