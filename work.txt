@@ -44,7 +44,23 @@ weather.data.kanazawa.2016$date <- as.POSIXlt(weather.data.kanazawa.2016$date)
 weather.data.toyama.2016$date <- as.POSIXlt(weather.data.toyama.2016$date)
 
 
-## 金沢発、富山着の時刻を気象データにそろえるため、ダイヤ時刻を四捨五入して、気象データとそろえる
+# 気象データからロケーション列を抜く
+
+weather.data.kanazawa.2016 <- weather.data.kanazawa.2016[, c(1, 3:16)]
+
+weather.data.toyama.2016 <- weather.data.toyama.2016[, c(1, 3:16)]
+
+
+# 金沢、富山の気象データは列名がかぶるので、列名を変更する
+
+colnames(weather.data.kanazawa.2016) <-
+c("kanazawaTimeWeather", "k_tempareture(℃)", "k_precipitation(mm)", "k_snowfall(cm)", "k_snow(cm)", "k_sunshineTime(h)", "k_windSpeed(m/s)", "k_windDirection", "k_amountOfIsolation(MJ/㎡)", "k_localAtomosphericPressur(hPa)", "k_seeLevelPressur(hPa)", "k_relativeHumidity(％)", "k_VaporPressur(hPa)", "k_cloudVlume(10minThan)", "k_dewPointTempareture(℃)")
+
+colnames(weather.data.toyama.2016) <-
+c("toyamaTimeWeather", "t_tempareture(℃)", "t_precipitation(mm)", "t_snowfall(cm)", "t_snow(cm)", "t_sunshineTime(h)", "t_windSpeed(m/s)", "t_windDirection", "t_amountOfIsolation(MJ/㎡)", "t_localAtomosphericPressur(hPa)", "t_seeLevelPressur(hPa)", "t_relativeHumidity(％)", "t_VaporPressur(hPa)", "t_cloudVlume(10minThan)", "t_dewPointTempareture(℃)")
+
+
+# 金沢発、富山着の時刻を気象データにそろえるため、ダイヤ時刻を四捨五入して、気象データとそろえる
 
 train.weather <- train.master
 
@@ -53,8 +69,24 @@ train.weather$kanazawaTimeWeather <- round(train.weather$kanazawaTime, "hours")
 train.weather$toyamaTimeWeather <- round(train.weather$toyamaTime, "hours")
 
 
+# 車両データに気象データをマージする
+
+train.weather.kanazawa <- 
+merge(train.weather, weather.data.kanazawa.2016, by = "kanazawaTimeWeather", all.x = T)
+
+train.weather.kanazawa.toyama <- 
+merge(train.weather.kanazawa, weather.data.toyama.2016, by = "toyamaTimeWeather", all.x = T)
 
 
+# 不要列の削除と整理
+
+train.weather.kanazawa.toyama <-
+train.weather.kanazawa.toyama[, c(3:7, 2, 8:21, 1, 22:35)]
+
+
+# 車両、気象のマスターデータ作成
+
+train.weather.master <- train.weather.kanazawa.toyama
 
 
 #####################################
@@ -465,11 +497,83 @@ train.weather$toyamaTimeWeather <- round(train.weather$toyamaTime, "hours")
 
 # 気象データからロケーション列を抜く
 
+weather.data.kanazawa.2016 <- weather.data.kanazawa.2016[, c(1, 3:16)]
+
+weather.data.toyama.2016 <- weather.data.toyama.2016[, c(1, 3:16)]
+
 
 # 金沢、富山の気象データは列名がかぶるので、列名を変更する
 
+colnames(weather.data.kanazawa.2016) <-
+c("kanazawaTimeWeather", "k_tempareture(℃)", "k_precipitation(mm)", "k_snowfall(cm)", "k_snow(cm)", "k_sunshineTime(h)", "k_windSpeed(m/s)", "k_windDirection", "k_amountOfIsolation(MJ/㎡)", "k_localAtomosphericPressur(hPa)", "k_seeLevelPressur(hPa)", "k_relativeHumidity(％)", "k_VaporPressur(hPa)", "k_cloudVlume(10minThan)", "k_dewPointTempareture(℃)")
+
+colnames(weather.data.toyama.2016) <-
+c("toyamaTimeWeather", "t_tempareture(℃)", "t_precipitation(mm)", "t_snowfall(cm)", "t_snow(cm)", "t_sunshineTime(h)", "t_windSpeed(m/s)", "t_windDirection", "t_amountOfIsolation(MJ/㎡)", "t_localAtomosphericPressur(hPa)", "t_seeLevelPressur(hPa)", "t_relativeHumidity(％)", "t_VaporPressur(hPa)", "t_cloudVlume(10minThan)", "t_dewPointTempareture(℃)")
+
+
+
 
 # 車両データに気象データをマージする
+
+
+hoge4 <- merge(hoge1, hoge2, by = "kanazawaTimeWeather", all.x = T)
+hoge5 <- merge(hoge4, hoge3, by = "toyamaTimeWeather", all.x = T)
+
+
+
+train.weather.kanazawa <- 
+merge(train.weather, weather.data.kanazawa.2016, by = "kanazawaTimeWeather", all.x = T)
+
+
+train.weather.kanazawa.toyama <- 
+merge(train.weather.kanazawa, weather.data.toyama.2016, by = "toyamaTimeWeather", all.x = T)
+
+
+train.weather
+weather.data.kanazawa.2016
+weather.data.toyama.2016
+
+
+train.weather.kanazawa <-
+    merge(train.weather, weather.data.kanazawa.2016, by = "kanazawaTimeWeather", all.x = T)
+
+train.weather.kanazawa.toyama <-
+    merge(train.weather.kanazawa, weather.data.toyama.2016, by = "toyamaTimeWeather", all.x = T)
+
+
+# 不要列の削除と整理
+
+train.weather.kanazawa.toyama
+
+
+> colnames(hoge)
+ [1] "toyamaTimeWeather"               "kanazawaTimeWeather"             "date"                           
+ [4] "train"                           "kanazawaTime"                    "toyamaTime"                     
+ [7] "snow"                            "k_tempareture(℃)"               "k_precipitation(mm)"            
+[10] "k_snowfall(cm)"                  "k_snow(cm)"                      "k_sunshineTime(h)"              
+[13] "k_windSpeed(m/s)"                "k_windDirection"                 "k_amountOfIsolation(MJ/㎡)"     
+[16] "k_localAtomosphericPressur(hPa)" "k_seeLevelPressur(hPa)"          "k_relativeHumidity(％)"         
+[19] "k_VaporPressur(hPa)"             "k_cloudVlume(10minThan)"         "k_dewPointTempareture(℃)"      
+[22] "t_tempareture(℃)"               "t_precipitation(mm)"             "t_snowfall(cm)"                 
+[25] "t_snow(cm)"                      "t_sunshineTime(h)"               "t_windSpeed(m/s)"               
+[28] "t_windDirection"                 "t_amountOfIsolation(MJ/㎡)"      "t_localAtomosphericPressur(hPa)"
+[31] "t_seeLevelPressur(hPa)"          "t_relativeHumidity(％)"          "t_VaporPressur(hPa)"            
+[34] "t_cloudVlume(10minThan)"         "t_dewPointTempareture(℃)"      
+> 
+
+c(3:7, 2, 8:21, 1, 22:35)
+
+> hoge[, c(3:7, 2, 8:21, 1, 22:35)] %>% head()
+hoge <- hoge[, c(3:7, 2, 8:21, 1, 22:35)]
+
+
+train.weather.kanazawa.toyama <-
+train.weather.kanazawa.toyama[, c(3:7, 2, 8:21, 1, 22:35)]
+
+
+# 車両、気象のマスターデータ作成
+
+train.weather.master <- train.weather.kanazawa.toyama
 
 
 
