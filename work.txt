@@ -5,6 +5,7 @@ library(dplyr)
 library(stringr)
 
 
+
 # 金沢、富山の気象データを抽出
 
 weather.data.kanazawa <- weather.data %>%
@@ -27,9 +28,29 @@ weather.data.toyama.2016 <- as.data.table(weather.data.toyama) %>%
     )
 
 
+# 列名を修正
+
+colnames(weather.data.kanazawa.2016) <-
+c("date", "location", "tempareture(℃)", "precipitation(mm)", "snowfall(cm)", "snow(cm)", "sunshineTime(h)", "windSpeed(m/s)", "windDirection", "amountOfIsolation(MJ/㎡)", "localAtomosphericPressur(hPa)", "seeLevelPressur(hPa)", "relativeHumidity(％)", "VaporPressur(hPa)", "cloudVlume(10minThan)", "dewPointTempareture(℃)", "weather", "visiblity(km)")
+
+colnames(weather.data.toyama.2016) <-
+c("date", "location", "tempareture(℃)", "precipitation(mm)", "snowfall(cm)", "snow(cm)", "sunshineTime(h)", "windSpeed(m/s)", "windDirection", "amountOfIsolation(MJ/㎡)", "localAtomosphericPressur(hPa)", "seeLevelPressur(hPa)", "relativeHumidity(％)", "VaporPressur(hPa)", "cloudVlume(10minThan)", "dewPointTempareture(℃)", "weather", "visiblity(km)")
 
 
+# 時刻を修正
 
+weather.data.kanazawa.2016$date <- as.POSIXlt(weather.data.kanazawa.2016$date)
+
+weather.data.toyama.2016$date <- as.POSIXlt(weather.data.toyama.2016$date)
+
+
+## 金沢発、富山着の時刻を気象データにそろえるため、ダイヤ時刻を四捨五入して、気象データとそろえる
+
+train.weather <- train.master
+
+train.weather$kanazawaTimeWeather <- round(train.weather$kanazawaTime, "hours")
+
+train.weather$toyamaTimeWeather <- round(train.weather$toyamaTime, "hours")
 
 
 
@@ -58,6 +79,10 @@ weather.data.toyama.2016 <- as.data.table(weather.data.toyama) %>%
 
 テストデータ
 2017/1/1-2017/3/31 金沢、富山の気象データを抽出
+
+
+
+
 
 
 # 金沢、富山の気象データを抽出
@@ -354,6 +379,98 @@ as.POSIXlt(データ)
 ```
 
 以上
+
+
+
+
+# 列名を修正
+
+> colnames(weather.data)
+ [1] "年月日時"       "地点"           "気温(℃)"       "降水量(mm)"     "降雪(cm)"       "積雪(cm)"       "日照時間(時間)"
+ [8] "風速(m/s)"      "風向"           "日射量(MJ/㎡)"  "現地気圧(hPa)"  "海面気圧(hPa)"  "相対湿度(％)"   "蒸気圧(hPa)"   
+[15] "雲量(10分比)"   "露点温度(℃)"   "天気"           "視程(km)"      
+> 
+
+c("年月日時", "地点", "気温(℃)", "降水量(mm)", "降雪(cm)", "積雪(cm)", "日照時間(時間)", "風速(m/s)", "風向", "日射量(MJ/㎡)", "現地気圧(hPa)", "海面気圧(hPa)", "相対湿度(％)", "蒸気圧(hPa)", "雲量(10分比)", "露点温度(℃)", "天気", "視程(km)")
+
+
+
+
+# train.masterでkanazawaTimeの発射時刻を時間単位にする
+
+
+> head(hoge1)
+        date train        kanazawaTime          toyamaTime snow
+1 2016-01-19 3500E 2016-01-19 06:00:00 2016-01-19 06:19:00    0
+2 2016-01-19  552E 2016-01-19 06:13:00 2016-01-19 06:37:00    0
+3 2016-01-19 3502E 2016-01-19 07:00:00 2016-01-19 07:19:00    0
+4 2016-01-19 9536E 2016-01-19 07:08:00 2016-01-19 07:32:00    0
+5 2016-01-19  554E 2016-01-19 07:23:00 2016-01-19 07:47:00    0
+6 2016-01-19 3504E 2016-01-19 07:48:00 2016-01-19 08:07:00    0
+> 
+
+## 参照
+https://qiita.com/tktz/items/733c37b1d6102ae52120
+
+
+## 動作
+データの時刻を時間で丸める
+
+```
+round(データ, "hours")
+```
+
+## 動作例
+kanazawaTime列の時刻の分表示が細かいので丸める
+例えば、6時13分00秒は6時に、7時48分00秒は8時にしたい
+
+```
+# 元データを表示
+> head(hoge1)
+        date train        kanazawaTime          toyamaTime snow
+1 2016-01-19 3500E 2016-01-19 06:00:00 2016-01-19 06:19:00    0
+2 2016-01-19  552E 2016-01-19 06:13:00 2016-01-19 06:37:00    0
+3 2016-01-19 3502E 2016-01-19 07:00:00 2016-01-19 07:19:00    0
+4 2016-01-19 9536E 2016-01-19 07:08:00 2016-01-19 07:32:00    0
+5 2016-01-19  554E 2016-01-19 07:23:00 2016-01-19 07:47:00    0
+6 2016-01-19 3504E 2016-01-19 07:48:00 2016-01-19 08:07:00    0
+>
+# 新しい列を作って、そこに時間で丸めた時刻を挿入
+> hoge1$kanazawaTimeWeather <- round(hoge1$kanazawaTime, "hours")
+> 
+# 処理結果を表示、kanazawaTimeWeather列に時間で丸まった時刻が挿入されていることが分かる
+> head(hoge1)
+        date train        kanazawaTime          toyamaTime snow kanazawaTimeWeather
+1 2016-01-19 3500E 2016-01-19 06:00:00 2016-01-19 06:19:00    0 2016-01-19 06:00:00
+2 2016-01-19  552E 2016-01-19 06:13:00 2016-01-19 06:37:00    0 2016-01-19 06:00:00
+3 2016-01-19 3502E 2016-01-19 07:00:00 2016-01-19 07:19:00    0 2016-01-19 07:00:00
+4 2016-01-19 9536E 2016-01-19 07:08:00 2016-01-19 07:32:00    0 2016-01-19 07:00:00
+5 2016-01-19  554E 2016-01-19 07:23:00 2016-01-19 07:47:00    0 2016-01-19 07:00:00
+6 2016-01-19 3504E 2016-01-19 07:48:00 2016-01-19 08:07:00    0 2016-01-19 08:00:00
+> 
+```
+
+以上
+
+
+# 金沢発、富山着の時刻を気象データにそろえるため、共通列を作る
+
+train.weather <- train.master
+
+train.weather$kanazawaTimeWeather <- round(train.weather$kanazawaTime, "hours")
+
+train.weather$toyamaTimeWeather <- round(train.weather$toyamaTime, "hours")
+
+
+
+# 気象データからロケーション列を抜く
+
+
+# 金沢、富山の気象データは列名がかぶるので、列名を変更する
+
+
+# 車両データに気象データをマージする
+
 
 
 
