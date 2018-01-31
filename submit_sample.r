@@ -161,10 +161,16 @@ test.data.result <- test.data
 test.data.result$predict <- predict(result, test.weather.master)
 
 
-# CSVに出力
+# CSVに出力、ネイピア表記させない、ダブルウォートと列番号無効化
 
-fwrite(test.data.result, "test.data.result.csv")
+submit_sample.data <-
+test.data.result[, c(1,4)]
 
+colnames(submit_sample.data) <- c("", "")
+
+options(scipen=20)
+
+write.csv(submit_sample.data, "submit_sample.csv", quote=FALSE, row.names=FALSE)
 
 
 
