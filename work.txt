@@ -1,584 +1,494 @@
 # コード
 
-library(data.table)
-library(dplyr)
-library(stringr)
+library("randomForest")
 
 
+# 訓練データを作成
 
-# 金沢、富山の気象データを抽出
-
-weather.data.kanazawa <- weather.data %>%
-    filter(weather.data$地点 == "金沢")
-
-weather.data.toyama <- weather.data %>%
-    filter(weather.data$地点 == "富山")
-
-
-# 金沢、富山の気象データのうち、訓練データを抽出
-
-weather.data.kanazawa.2016 <- as.data.table(weather.data.kanazawa) %>%
-    filter(
-        str_detect(年月日時, "2016")
-    )
-
-weather.data.toyama.2016 <- as.data.table(weather.data.toyama) %>%
-    filter(
-        str_detect(年月日時, "2016")
-    )
+training.data <- train.weather.master
 
 
 # 列名を修正
 
-colnames(weather.data.kanazawa.2016) <-
+colnames(training.data) <-
+c("date","train","kanazawaTime","toyamaTime","snow","kanazawaTimeWeather","k_tempareture","k_precipitation","k_snowfall","k_snow","k_sunshineTime","k_windSpeed","k_windDirection","k_amountOfIsolation","k_localAtomosphericPressur","k_seeLevelPressur","k_relativeHumidity","k_VaporPressur","k_cloudVlume","k_dewPointTempareture","toyamaTimeWeather","t_tempareture","t_precipitation","t_snowfall","t_snow","t_sunshineTime","t_windSpeed","t_windDirection","t_amountOfIsolation","t_localAtomosphericPressur","t_seeLevelPressur","t_relativeHumidity","t_VaporPressur","t_cloudVlume","t_dewPointTempareture")
+
+
+# 不要列を削除
+
+training.data <-
+training.data[, c(2, 5, 7:13, 15:20, 22:35)]
+
+
+# キャラクタ型を因子型に変更
+
+training.data$train <- as.factor(training.data$train)
+training.data$k_windDirection <- as.factor(training.data$k_windDirection)
+training.data$k_cloudVlume <- as.factor(training.data$k_cloudVlume)
+training.data$t_windDirection <- as.factor(training.data$t_windDirection)
+training.data$t_cloudVlume <- as.factor(training.data$t_cloudVlume)
+
+
+## 予測モデルを構築
+
+result <- randomForest(
+    training.data$snow ~.,
+    training.data,
+    na.action = na.exclude,
+    mtry = 1,
+    ntree = 500,
+    type = "regression"
+)
+
+
+# テストデータを作成(train.data.master部分)
+
+hoge1 <- test.data
+hoge2 <- diagram.data.kanazawa_to_toyama.t
+colnames(hoge1) <- c("V1", "date", "train")
+colnames(hoge2) <- c("kanazawaTime","toyamaTime","train")
+hoge3 <-
+    merge(hoge1, hoge2, by = "train", all.x = T)
+hoge3[order(hoge3$date, hoge3$kanazawaTime), ]
+hoge3$date <- as.Date(hoge3$date)
+hoge3$kanazawaTime <- as.POSIXlt(
+    paste(hoge3$date, hoge3$kanazawaTime)
+)
+hoge3$toyamaTime <- as.POSIXlt(
+    paste(hoge3$date, hoge3$toyamaTime)
+)
+hoge3 <- hoge3[order(hoge3$kanazawaTime), c(2, 3, 1, 4, 5)]
+rownames(hoge3) <- c(1:nrow(hoge3))
+test.data.master <- hoge3
+rm(hoge1)
+rm(hoge2)
+rm(hoge3)
+
+
+# テストデータを作成(weather.data部分)
+
+weather.data.kanazawa.2017 <- as.data.table(weather.data.kanazawa) %>%
+    filter(
+        str_detect(年月日時, "2017")
+    )
+
+weather.data.toyama.2017 <- as.data.table(weather.data.toyama) %>%
+    filter(
+        str_detect(年月日時, "2017")
+    )
+
+colnames(weather.data.kanazawa.2017) <-
 c("date", "location", "tempareture(℃)", "precipitation(mm)", "snowfall(cm)", "snow(cm)", "sunshineTime(h)", "windSpeed(m/s)", "windDirection", "amountOfIsolation(MJ/㎡)", "localAtomosphericPressur(hPa)", "seeLevelPressur(hPa)", "relativeHumidity(％)", "VaporPressur(hPa)", "cloudVlume(10minThan)", "dewPointTempareture(℃)", "weather", "visiblity(km)")
 
-colnames(weather.data.toyama.2016) <-
+colnames(weather.data.toyama.2017) <-
 c("date", "location", "tempareture(℃)", "precipitation(mm)", "snowfall(cm)", "snow(cm)", "sunshineTime(h)", "windSpeed(m/s)", "windDirection", "amountOfIsolation(MJ/㎡)", "localAtomosphericPressur(hPa)", "seeLevelPressur(hPa)", "relativeHumidity(％)", "VaporPressur(hPa)", "cloudVlume(10minThan)", "dewPointTempareture(℃)", "weather", "visiblity(km)")
 
+weather.data.kanazawa.2017$date <- as.POSIXlt(weather.data.kanazawa.2017$date)
 
-# 時刻を修正
+weather.data.toyama.2017$date <- as.POSIXlt(weather.data.toyama.2017$date)
 
-weather.data.kanazawa.2016$date <- as.POSIXlt(weather.data.kanazawa.2016$date)
+weather.data.kanazawa.2017 <- weather.data.kanazawa.2017[, c(1, 3:16)]
 
-weather.data.toyama.2016$date <- as.POSIXlt(weather.data.toyama.2016$date)
-
-
-# 気象データからロケーション列を抜く
-
-weather.data.kanazawa.2016 <- weather.data.kanazawa.2016[, c(1, 3:16)]
-
-weather.data.toyama.2016 <- weather.data.toyama.2016[, c(1, 3:16)]
+weather.data.toyama.2017 <- weather.data.toyama.2017[, c(1, 3:16)]
 
 
-# 金沢、富山の気象データは列名がかぶるので、列名を変更する
-
-colnames(weather.data.kanazawa.2016) <-
+colnames(weather.data.kanazawa.2017) <-
 c("kanazawaTimeWeather", "k_tempareture(℃)", "k_precipitation(mm)", "k_snowfall(cm)", "k_snow(cm)", "k_sunshineTime(h)", "k_windSpeed(m/s)", "k_windDirection", "k_amountOfIsolation(MJ/㎡)", "k_localAtomosphericPressur(hPa)", "k_seeLevelPressur(hPa)", "k_relativeHumidity(％)", "k_VaporPressur(hPa)", "k_cloudVlume(10minThan)", "k_dewPointTempareture(℃)")
 
-colnames(weather.data.toyama.2016) <-
+colnames(weather.data.toyama.2017) <-
 c("toyamaTimeWeather", "t_tempareture(℃)", "t_precipitation(mm)", "t_snowfall(cm)", "t_snow(cm)", "t_sunshineTime(h)", "t_windSpeed(m/s)", "t_windDirection", "t_amountOfIsolation(MJ/㎡)", "t_localAtomosphericPressur(hPa)", "t_seeLevelPressur(hPa)", "t_relativeHumidity(％)", "t_VaporPressur(hPa)", "t_cloudVlume(10minThan)", "t_dewPointTempareture(℃)")
 
+hoge1 <- 
+test.data.master
 
-# 金沢発、富山着の時刻を気象データにそろえるため、ダイヤ時刻を四捨五入して、気象データとそろえる
+hoge1$kanazawaTimeWeather <- round(hoge1$kanazawaTime, "hours")
 
-train.weather <- train.master
-
-train.weather$kanazawaTimeWeather <- round(train.weather$kanazawaTime, "hours")
-
-train.weather$toyamaTimeWeather <- round(train.weather$toyamaTime, "hours")
+hoge1$toyamaTimeWeather <- round(hoge1$toyamaTime, "hours")
 
 
-# 車両データに気象データをマージする
-
-train.weather.kanazawa <- 
-merge(train.weather, weather.data.kanazawa.2016, by = "kanazawaTimeWeather", all.x = T)
-
-train.weather.kanazawa.toyama <- 
-merge(train.weather.kanazawa, weather.data.toyama.2016, by = "toyamaTimeWeather", all.x = T)
+hoge1$kanazawaTimeWeather <- as.character(hoge1$kanazawaTimeWeather)
+hoge1$toyamaTimeWeather <- as.character(hoge1$toyamaTimeWeather)
 
 
-# 不要列の削除と整理
-
-train.weather.kanazawa.toyama <-
-train.weather.kanazawa.toyama[, c(3:7, 2, 8:21, 1, 22:35)]
+weather.data.kanazawa.2017$kanazawaTimeWeather <- as.character(weather.data.kanazawa.2017$kanazawaTimeWeather)
 
 
-# 車両、気象のマスターデータ作成
+weather.data.toyama.2017$toyamaTimeWeather <- as.character(weather.data.toyama.2017$toyamaTimeWeather)
 
-train.weather.master <- train.weather.kanazawa.toyama
+test.weather.kanazawa <- 
+merge(hoge1, weather.data.kanazawa.2017, by = "kanazawaTimeWeather", all.x = T)
 
+test.weather.kanazawa.toyama <- 
+merge(test.weather.kanazawa, weather.data.toyama.2017, by = "toyamaTimeWeather", all.x = T)
 
-#####################################
+test.weather.kanazawa.toyama <-
+test.weather.kanazawa.toyama[, c(3:7, 2, 8:21, 1, 22:35)]
 
-# 気象データ処理
-
-着雪量データ
-学習期間：2016/1/19～2016/12/31
-予測期間：2017/1/1～2017/3/31
-
-
-金沢、富山、糸魚川の3地点
-2015/12/1～2016/3/31
-2016/12/1～2017/3/31
-
-
-# 方針
-糸魚川は捨てる
-
-訓練データ
-2016/1/19-2016/12/31 金沢、富山の気象データを抽出
-
-テストデータ
-2017/1/1-2017/3/31 金沢、富山の気象データを抽出
+test.weather.master <- test.weather.kanazawa.toyama
 
 
 
 
 
 
-# 金沢、富山の気象データを抽出
-
-weather.data.kanazawa <- weather.data %>%
-    filter(weather.data$地点 == "金沢")
-
-weather.data.toyama <- weather.data %>%
-    filter(weather.data$地点 == "富山")
 
 
-# 金沢、富山の気象データのうち、訓練データを抽出
-
-library(stringr)
-
-weather.data.kanazawa.2016 <- as.data.table(weather.data.kanazawa) %>%
-    filter(
-        str_detect(年月日時, "2016")
-    )
 
 
-weather.data.toyama.2016 <- as.data.table(weather.data.toyama) %>%
-    filter(
-        str_detect(年月日時, "2016")
-    )
-
-# train.masterと気象データの結合方法検討
-
-キーとなる列を作って合体させる
-何をキーとするか
-
-日付と時間の場合
-train.master
-toyama年月日	kanazawaTime
-2016-01-19	10:56
-
-weather.data.kanazawa.2016
-年月日時
-2016/1/19 11:00
 
 
-車両？
-train.master
-toyama列車番号
-560E
 
-weather.data.kanazawa.2016
-ダイヤに紐づいた時間
 
-時間の方が処理が楽そうなので、train.masterとweather.data.kanazawa.2016の時間が同じになるように処理
-時間のフィールドでデータを結合する
 
-# train.masterの不要列の削除
 
+
+
+
+####################################
+
+# 訓練データを作成
+# ランダムフォレストで多変数回帰モデルを作成
+# テストデータを作成
+# テストデータに食わせて結果を送信
+
+####################################
+
+# ランダムフォレストで多変数回帰モデルを作成
 
 ## 参照元
-https://qiita.com/dokokano_panda/items/4e40deece0b169bc979a
-
-
-## 動作
-データオブジェクトの後ろに括弧[]をつけてc()で必要な列を順番に指定
-
-```
-データ[, c(列番号, 列番号, 列番号)
-```
+http://qiitawise.netone.co.jp/knowledge/open.knowledge/view/992
 
 
 
-## 例
-列を入れ替えたデータフレームを作成
+library("randomForest")
 
-```
-# 元データを確認
-> hoge[1,]
-  toyama列車番号 toyama年月日 toyama停車駅名 toyamaフェンダー部分(東京方向) toyama台車部分 toyamaフェンダー部分(金沢方向)
-1           560E   2016-01-19           富山                              0              0                    0.002985924
-   toyama合計 kanazawaTime toyamaTime
-1 0.002985924        10:56      11:19
+# ランダムフォレストでモデル作成
+rf_result <- randomForest(
+    freeny.y ~ .,
+    df,
+    mtry = 1,
+    ntree = 500,
+    type = "regression"
+)
+
+
+randomForest(
+    目的変数データ ~ .,
+    訓練データ,
+    mtry = 1,
+    ntree = 500,
+    type = "regression"
+)
+
+
+Error in model.frame.default(formula = snow ~ ., data = hoge, na.action = function (object,  : 
+   型 (list) は変数 'kanazawaTime' に対しては不正です 
 > 
-# 列名と番号を確認
-> colnames(hoge)
-[1] "toyama列車番号"                 "toyama年月日"                   "toyama停車駅名"                
-[4] "toyamaフェンダー部分(東京方向)" "toyama台車部分"                 "toyamaフェンダー部分(金沢方向)"
+
+時刻データを削除
+
+> result <- randomForest(
++     snow ~.,
++     hoge2,
++     mtry = 1,
++     ntree = 500,
++     type = "regression"
++ )
+Error in na.fail.default(list(snow = c(0, 0, 0, 0, 0, 0, 0, 0, 0.002328391,  : 
+  missing values in object
 > 
-# 入れ替えた時のデータを1行だけ表示
-> hoge[1, c(2, 8, 9, 1, 7)]
-  toyama年月日 kanazawaTime toyamaTime toyama列車番号  toyama合計
-1   2016-01-19        10:56      11:19           560E 0.002985924
+https://stackoverflow.com/questions/38250440/error-in-na-fail-default-missing-values-in-object-but-no-missing-values
+
+na.action = na.excludeオプションを入れる
+
+result <- randomForest(
+    snow ~.,
+    hoge2,
+    na.action = na.exclude,
+    mtry = 1,
+    ntree = 500,
+    type = "regression"
+)
+
+
 > 
-# 列を入れ替えたデータを作成
-> hoge2 <- hoge[, c(2, 8, 9, 1, 7)]
-> 
-# 作成データを確認
-> head(hoge2)
-  toyama年月日 kanazawaTime toyamaTime toyama列車番号  toyama合計
-1   2016-01-19        10:56      11:19           560E 0.002985924
-2   2016-01-19        11:56      12:19           562E 0.000000000
-3   2016-01-19        12:56      13:19           564E 0.000949196
-4   2016-01-19        13:46      14:06          8528E 0.002207584
-5   2016-01-19        13:56      14:19           566E 0.000328679
-6   2016-01-19        14:50      15:13           568E 0.000397536
-> 
-```
-
-以上
-
-
-# train.masterの時刻操作
-
-問題点
-時刻列がcharactor型なので時系列でソートされていない
-
-18 2016-01-19 3518E        21:00      21:20 0.001367888
-19 2016-01-19  590E        21:35      21:58 0.001346470
-20 2016-01-19 3500E         6:00       6:19 0.000000000
-
-対策
-正しいデータ型を使う
-
-## 参照元
-https://www.google.co.jp/search?q=r+%E3%83%87%E3%83%BC%E3%82%BF%E5%9E%8B%E3%80%80%E6%97%A5%E4%BB%98&gws_rd=cr&dcr=0&ei=hy9xWvi0FIOK8gW64aiIAQ
-http://cse.naro.affrc.go.jp/takezawa/r-tips/r/16.html
-
-## 動作例
-date列がcharacter型なので数値の日付型に変更する
-```
-# 元データを確認、date列がcharacter型
-> summary(hoge)
-     date              train            kanazawaTime    toyamaTime        snow          
- Length:10092       Length:10092       10:56  : 348   10:05  : 348   Min.   :0.000e+00  
- Class :character   Class :character   11:56  : 348   11:19  : 348   1st Qu.:0.000e+00  
- Mode  :character   Mode  :character   12:56  : 348   12:19  : 348   Median :0.000e+00  
-                                       13:46  : 348   13:19  : 348   Mean   :4.408e-05  
-                                       13:56  : 348   14:06  : 348   3rd Qu.:0.000e+00  
-                                       14:50  : 348   14:19  : 348   Max.   :4.942e-02  
-                                       (Other):8004   (Other):8004                      
-> 
-# 元データを表示、date列は見た目は日付を表しているが文字列扱い
-> head(hoge)
-        date train kanazawaTime toyamaTime        snow
-1 2016-01-19  560E        10:56      11:19 0.002985924
-2 2016-01-19  562E        11:56      12:19 0.000000000
-3 2016-01-19  564E        12:56      13:19 0.000949196
-4 2016-01-19 8528E        13:46      14:06 0.002207584
-5 2016-01-19  566E        13:56      14:19 0.000328679
-6 2016-01-19  568E        14:50      15:13 0.000397536
-> 
-# date列をData型に変更
-> hoge$date <- as.Date(hoge$date)
-> 
-# 変更後は数値データとして処理されているのがわかる
-> summary(hoge)
-      date               train            kanazawaTime    toyamaTime        snow          
- Min.   :2016-01-19   Length:10092       10:56  : 348   10:05  : 348   Min.   :0.000e+00  
- 1st Qu.:2016-04-14   Class :character   11:56  : 348   11:19  : 348   1st Qu.:0.000e+00  
- Median :2016-07-10   Mode  :character   12:56  : 348   12:19  : 348   Median :0.000e+00  
- Mean   :2016-07-10                      13:46  : 348   13:19  : 348   Mean   :4.408e-05  
- 3rd Qu.:2016-10-05                      13:56  : 348   14:06  : 348   3rd Qu.:0.000e+00  
- Max.   :2016-12-31                      14:50  : 348   14:19  : 348   Max.   :4.942e-02  
-                                         (Other):8004   (Other):8004                      
->
-# 変更後も表示は変わっていない
-> head(hoge)
-        date train kanazawaTime toyamaTime        snow
-1 2016-01-19  560E        10:56      11:19 0.002985924
-2 2016-01-19  562E        11:56      12:19 0.000000000
-3 2016-01-19  564E        12:56      13:19 0.000949196
-4 2016-01-19 8528E        13:46      14:06 0.002207584
-5 2016-01-19  566E        13:56      14:19 0.000328679
-6 2016-01-19  568E        14:50      15:13 0.000397536
-> 
-```
-
-以上
-
-# データ内の文字列を結合する
-
-## 参照元
-http://www.okadajp.org/RWiki/?%E6%97%A5%E4%BB%98%E3%80%81%E6%99%82%E9%96%93%E9%96%A2%E6%95%B0Tips%E5%A4%A7%E5%85%A8
-
-
-## 動作
-列と列のデータを結合して、新しい列に追加する
-
-```
-データ$新しい列 <- paste(データ$列, データ$列)
-```
-
-## 例
-日付列と時刻列を結合
-
-```
-# 元データを表示
-> head(hoge)
-        date train kanazawaTime toyamaTime        snow
-1 2016-01-19  560E        10:56      11:19 0.002985924
-2 2016-01-19  562E        11:56      12:19 0.000000000
-3 2016-01-19  564E        12:56      13:19 0.000949196
-4 2016-01-19 8528E        13:46      14:06 0.002207584
-5 2016-01-19  566E        13:56      14:19 0.000328679
-6 2016-01-19  568E        14:50      15:13 0.000397536
+> result <- randomForest(
++     snow ~.,
++     hoge2,
++     na.action = na.exclude,
++     mtry = 1,
++     ntree = 500,
++     type = "regression"
++ )
+Error in eval(predvars, data, env) : object 'k_tempareture(℃)' not found
 > 
 > 
-# new列を作って、そこにdate列とkanazawaTime列を入れる
-> hoge$new <- paste(hoge$date, hoge$kanazawaTime)
+
+https://stackoverflow.com/questions/35074597/error-in-running-randomforest-object-not-found
+
+列名がイリーガル
+単位を削る
+
+> colnames(hoge2)
+ [1] "train"                           "snow"                            "k_tempareture(℃)"               "k_precipitation(mm)"            
+ [5] "k_snowfall(cm)"                  "k_snow(cm)"                      "k_sunshineTime(h)"               "k_windSpeed(m/s)"               
+ [9] "k_windDirection"                 "k_amountOfIsolation(MJ/㎡)"      "k_localAtomosphericPressur(hPa)" "k_seeLevelPressur(hPa)"         
+[13] "k_relativeHumidity(％)"          "k_VaporPressur(hPa)"             "k_cloudVlume(10minThan)"         "k_dewPointTempareture(℃)"      
+[17] "t_tempareture(℃)"               "t_precipitation(mm)"             "t_snowfall(cm)"                  "t_snow(cm)"                     
+[21] "t_sunshineTime(h)"               "t_windSpeed(m/s)"                "t_windDirection"                 "t_amountOfIsolation(MJ/㎡)"     
+[25] "t_localAtomosphericPressur(hPa)" "t_seeLevelPressur(hPa)"          "t_relativeHumidity(％)"          "t_VaporPressur(hPa)"            
+[29] "t_cloudVlume(10minThan)"         "t_dewPointTempareture(℃)"      
+> 
+
+colnames(hoge2) <-
+c(
+"train","snow","k_tempareture","k_precipitation","k_snowfall","k_snow","k_sunshineTime","k_windSpeed","k_windDirection","k_amountOfIsolation","k_localAtomosphericPressur","k_seeLevelPressur","k_relativeHumidity","k_VaporPressur","k_cloudVlume","k_dewPointTempareture","t_tempareture","t_precipitation","t_snowfall","t_snow","t_sunshineTime","t_windSpeed","t_windDirection","t_amountOfIsolation","t_localAtomosphericPressur","t_seeLevelPressur","t_relativeHumidity","t_VaporPressur","t_cloudVlume","t_dewPointTempareture"
+)
+
+
+> result <- randomForest(
++     snow ~.,
++     hoge2,
++     na.action = na.exclude,
++     mtry = 1,
++     ntree = 500,
++     type = "regression"
++ )
+Error in randomForest.default(m, y, ...) : data (x) has 0 rows
+In addition: Warning message:
+In randomForest.default(m, y, ...) :
+  The response has five or fewer unique values.  Are you sure you want to do regression?
 > 
 > 
-# 列newに結合データがある、でも文字列
-> head(hoge)
-        date train kanazawaTime toyamaTime        snow              new
-1 2016-01-19  560E        10:56      11:19 0.002985924 2016-01-19 10:56
-2 2016-01-19  562E        11:56      12:19 0.000000000 2016-01-19 11:56
-3 2016-01-19  564E        12:56      13:19 0.000949196 2016-01-19 12:56
-4 2016-01-19 8528E        13:46      14:06 0.002207584 2016-01-19 13:46
-5 2016-01-19  566E        13:56      14:19 0.000328679 2016-01-19 13:56
-6 2016-01-19  568E        14:50      15:13 0.000397536 2016-01-19 14:50
+
+
+
+
+http://d.hatena.ne.jp/dichika/20160225/p1
+
+キャラクタを含むとエラーになる
+
+
+result <- randomForest(
+    snow ~.,
+    hoge4,
+    na.action = na.exclude,
+    mtry = 1,
+    ntree = 500,
+    type = "regression"
+)
+
+> summary(hoge4)
+     train      k_tempareture    k_precipitation    k_snowfall        k_snow       k_sunshineTime   k_windSpeed     k_windDirection k_amountOfIsolation
+ 3500E  : 348   Min.   :-3.800   Min.   : 0.000   Min.   :0.000   Min.   : 0.000   Min.   :0.000   Min.   : 0.300   南西   : 382    Min.   : NA        
+ 3502E  : 348   1st Qu.: 3.500   1st Qu.: 0.000   1st Qu.:0.000   1st Qu.: 0.000   1st Qu.:0.000   1st Qu.: 2.600   東     : 342    1st Qu.: NA        
+ 3504E  : 348   Median : 6.400   Median : 0.000   Median :0.000   Median : 0.000   Median :0.000   Median : 3.900   東北東 : 310    Median : NA        
+ 3506E  : 348   Mean   : 7.042   Mean   : 0.276   Mean   :0.044   Mean   : 1.083   Mean   :0.186   Mean   : 4.424   南南西 : 304    Mean   :NaN        
+ 3508E  : 348   3rd Qu.: 9.825   3rd Qu.: 0.000   3rd Qu.:0.000   3rd Qu.: 0.000   3rd Qu.:0.200   3rd Qu.: 5.900   西南西 : 217    3rd Qu.: NA        
+ 3510E  : 348   Max.   :23.000   Max.   :12.000   Max.   :7.000   Max.   :22.000   Max.   :1.000   Max.   :16.600   (Other):1461    Max.   : NA        
+ (Other):8004   NA's   :7076     NA's   :7076     NA's   :7076    NA's   :7076     NA's   :7076    NA's   :7076     NA's   :7076    NA's   :10092      
+ k_localAtomosphericPressur k_seeLevelPressur k_relativeHumidity k_VaporPressur    k_cloudVlume  k_dewPointTempareture t_tempareture    t_precipitation
+ Min.   : 994               Min.   : 997.9    Min.   :19.00      Min.   : 2.600          :2080   Min.   :-11.400       Min.   :-3.300   Min.   :0.000  
+ 1st Qu.:1013               1st Qu.:1017.4    1st Qu.:55.00      1st Qu.: 5.400   10     : 329   1st Qu.: -1.800       1st Qu.: 2.800   1st Qu.:0.000  
+ Median :1017               Median :1021.5    Median :68.00      Median : 6.200   10-    : 270   Median :  0.100       Median : 5.900   Median :0.000  
+ Mean   :1017               Mean   :1020.8    Mean   :66.81      Mean   : 6.739   9      :  79   Mean   :  0.841       Mean   : 6.501   Mean   :0.229  
+ 3rd Qu.:1021               3rd Qu.:1025.0    3rd Qu.:81.00      3rd Qu.: 7.600   0+     :  47   3rd Qu.:  3.000       3rd Qu.: 9.700   3rd Qu.:0.000  
+ Max.   :1029               Max.   :1033.4    Max.   :95.00      Max.   :16.400   (Other): 211   Max.   : 14.400       Max.   :22.700   Max.   :8.500  
+ NA's   :7076               NA's   :7076      NA's   :7076       NA's   :7076     NA's   :7076   NA's   :7076          NA's   :7076     NA's   :7076   
+   t_snowfall        t_snow       t_sunshineTime   t_windSpeed     t_windDirection t_amountOfIsolation t_localAtomosphericPressur t_seeLevelPressur
+ Min.   :0.000   Min.   : 0.000   Min.   :0.000   Min.   : 0.100   南南西 : 677    Min.   :0.000       Min.   : 995.9             Min.   : 997.9   
+ 1st Qu.:0.000   1st Qu.: 0.000   1st Qu.:0.000   1st Qu.: 1.900   南西   : 475    1st Qu.:0.000       1st Qu.:1015.5             1st Qu.:1017.6   
+ Median :0.000   Median : 0.000   Median :0.000   Median : 2.700   南     : 343    Median :0.120       Median :1019.5             Median :1021.6   
+ Mean   :0.045   Mean   : 2.916   Mean   :0.191   Mean   : 3.045   西南西 : 241    Mean   :0.426       Mean   :1018.9             Mean   :1021.1   
+ 3rd Qu.:0.000   3rd Qu.: 0.000   3rd Qu.:0.200   3rd Qu.: 3.800   西     : 233    3rd Qu.:0.620       3rd Qu.:1023.2             3rd Qu.:1025.3   
+ Max.   :5.000   Max.   :51.000   Max.   :1.000   Max.   :12.200   (Other):1047    Max.   :3.200       Max.   :1031.6             Max.   :1033.8   
+ NA's   :7076    NA's   :7076     NA's   :7076    NA's   :7076     NA's   :7076    NA's   :7076        NA's   :7076               NA's   :7076     
+ t_relativeHumidity t_VaporPressur   t_cloudVlume  t_dewPointTempareture      snow          
+ Min.   : 16.00     Min.   : 2.90          :2496   Min.   :-10.000       Min.   :0.000e+00  
+ 1st Qu.: 56.00     1st Qu.: 5.30   10     : 175   1st Qu.: -1.900       1st Qu.:0.000e+00  
+ Median : 73.00     Median : 6.20   10-    : 136   Median :  0.200       Median :0.000e+00  
+ Mean   : 69.21     Mean   : 6.67   9      :  41   Mean   :  0.678       Mean   :4.408e-05  
+ 3rd Qu.: 84.00     3rd Qu.: 7.60   0+     :  30   3rd Qu.:  3.000       3rd Qu.:0.000e+00  
+ Max.   :100.00     Max.   :16.50   (Other): 138   Max.   : 14.500       Max.   :4.942e-02  
+ NA's   :7076       NA's   :7076    NA's   :7076   NA's   :7076                             
 > 
-```
-
-以上
-
-
-# train.masterの時刻データを正しくする
-
-as.POSIXlt(データ)で変換すると日付データがすべて同じになってしまう
-
-
-## 参照元
-http://www.okadajp.org/RWiki/?%E6%97%A5%E4%BB%98%E3%80%81%E6%99%82%E9%96%93%E9%96%A2%E6%95%B0Tips%E5%A4%A7%E5%85%A8
-
-
-## 動作
-時刻データに変換
-データはyyyy-mm-dd HH:MM:SS形式のcharacter型でいれる
-```
-as.POSIXlt(データ)
-```
-
-足りない場合は自動補完されるけど弊害が多い
-例)yyyy-mm-ddが無いと、全部今日の日付が入る・・・
-
-
-## 例
-時刻列が文字データ、数値処理したいので、数値の時刻データにする
-
-```
-# 元データを表示
-> head(hoge)
-        date train kanazawaTime toyamaTime        snow
-1 2016-01-19  560E        10:56      11:19 0.002985924
-2 2016-01-19  562E        11:56      12:19 0.000000000
-3 2016-01-19  564E        12:56      13:19 0.000949196
-4 2016-01-19 8528E        13:46      14:06 0.002207584
-5 2016-01-19  566E        13:56      14:19 0.000328679
-6 2016-01-19  568E        14:50      15:13 0.000397536
 > 
-# kanazawaTime列は因子型データ
-> summary(hoge)
-      date               train            kanazawaTime    toyamaTime        snow          
- Min.   :2016-01-19   Length:10092       10:56  : 348   10:05  : 348   Min.   :0.000e+00  
- 1st Qu.:2016-04-14   Class :character   11:56  : 348   11:19  : 348   1st Qu.:0.000e+00  
- Median :2016-07-10   Mode  :character   12:56  : 348   12:19  : 348   Median :0.000e+00  
- Mean   :2016-07-10                      13:46  : 348   13:19  : 348   Mean   :4.408e-05  
- 3rd Qu.:2016-10-05                      13:56  : 348   14:06  : 348   3rd Qu.:0.000e+00  
- Max.   :2016-12-31                      14:50  : 348   14:19  : 348   Max.   :4.942e-02  
-                                         (Other):8004   (Other):8004                      
+> hoge5 <- hoge4[, c(1:8, 10:30)]
 > 
-# date列とkanazawaTime列を結合して時刻データとして上書き
-> hoge$kanazawaTime <- as.POSIXlt(
-+     paste(hoge$date, hoge$kanazawaTime)
+> 
+> result <- randomForest(
++     hoge5$snow ~.,
++     hoge5,
++     na.action = na.exclude,
++     mtry = 1,
++     ntree = 500,
++     type = "regression"
 + )
 > 
-# 処理後、kanazawaTime列が時刻データとして扱われている
-> summary(hoge)
-      date               train            kanazawaTime                   toyamaTime        snow          
- Min.   :2016-01-19   Length:10092       Min.   :2016-01-19 06:00:00   10:05  : 348   Min.   :0.000e+00  
- 1st Qu.:2016-04-14   Class :character   1st Qu.:2016-04-15 03:53:45   11:19  : 348   1st Qu.:0.000e+00  
- Median :2016-07-10   Mode  :character   Median :2016-07-11 01:47:30   12:19  : 348   Median :0.000e+00  
- Mean   :2016-07-10                      Mean   :2016-07-11 01:37:14   13:19  : 348   Mean   :4.408e-05  
- 3rd Qu.:2016-10-05                      3rd Qu.:2016-10-05 23:41:15   14:06  : 348   3rd Qu.:0.000e+00  
- Max.   :2016-12-31                      Max.   :2016-12-31 21:35:00   14:19  : 348   Max.   :4.942e-02  
-                                                                       (Other):8004                      
 > 
-# 処理後のデータ内容
-> head(hoge)
-        date train        kanazawaTime toyamaTime        snow
-1 2016-01-19  560E 2016-01-19 10:56:00      11:19 0.002985924
-2 2016-01-19  562E 2016-01-19 11:56:00      12:19 0.000000000
-3 2016-01-19  564E 2016-01-19 12:56:00      13:19 0.000949196
-4 2016-01-19 8528E 2016-01-19 13:46:00      14:06 0.002207584
-5 2016-01-19  566E 2016-01-19 13:56:00      14:19 0.000328679
-6 2016-01-19  568E 2016-01-19 14:50:00      15:13 0.000397536
-> 
-```
 
-以上
+col9にNaNが含まれている、この列が説明変数対象に含まれていると計算できなくなる
 
 
 
+
+
+# 訓練データを作成
+
+training.data <- train.weather.master
 
 # 列名を修正
 
-> colnames(weather.data)
- [1] "年月日時"       "地点"           "気温(℃)"       "降水量(mm)"     "降雪(cm)"       "積雪(cm)"       "日照時間(時間)"
- [8] "風速(m/s)"      "風向"           "日射量(MJ/㎡)"  "現地気圧(hPa)"  "海面気圧(hPa)"  "相対湿度(％)"   "蒸気圧(hPa)"   
-[15] "雲量(10分比)"   "露点温度(℃)"   "天気"           "視程(km)"      
-> 
-
-c("年月日時", "地点", "気温(℃)", "降水量(mm)", "降雪(cm)", "積雪(cm)", "日照時間(時間)", "風速(m/s)", "風向", "日射量(MJ/㎡)", "現地気圧(hPa)", "海面気圧(hPa)", "相対湿度(％)", "蒸気圧(hPa)", "雲量(10分比)", "露点温度(℃)", "天気", "視程(km)")
+colnames(training.data) <-
+c("date","train","kanazawaTime","toyamaTime","snow","kanazawaTimeWeather","k_tempareture","k_precipitation","k_snowfall","k_snow","k_sunshineTime","k_windSpeed","k_windDirection","k_amountOfIsolation","k_localAtomosphericPressur","k_seeLevelPressur","k_relativeHumidity","k_VaporPressur","k_cloudVlume","k_dewPointTempareture","toyamaTimeWeather","t_tempareture","t_precipitation","t_snowfall","t_snow","t_sunshineTime","t_windSpeed","t_windDirection","t_amountOfIsolation","t_localAtomosphericPressur","t_seeLevelPressur","t_relativeHumidity","t_VaporPressur","t_cloudVlume","t_dewPointTempareture")
 
 
 
+# 不要列を削除
 
-# train.masterでkanazawaTimeの発射時刻を時間単位にする
-
-
-> head(hoge1)
-        date train        kanazawaTime          toyamaTime snow
-1 2016-01-19 3500E 2016-01-19 06:00:00 2016-01-19 06:19:00    0
-2 2016-01-19  552E 2016-01-19 06:13:00 2016-01-19 06:37:00    0
-3 2016-01-19 3502E 2016-01-19 07:00:00 2016-01-19 07:19:00    0
-4 2016-01-19 9536E 2016-01-19 07:08:00 2016-01-19 07:32:00    0
-5 2016-01-19  554E 2016-01-19 07:23:00 2016-01-19 07:47:00    0
-6 2016-01-19 3504E 2016-01-19 07:48:00 2016-01-19 08:07:00    0
-> 
-
-## 参照
-https://qiita.com/tktz/items/733c37b1d6102ae52120
+training.data <-
+training.data[, c(2, 5, 7:13, 15:20, 22:35)]
 
 
-## 動作
-データの時刻を時間で丸める
-
-```
-round(データ, "hours")
-```
-
-## 動作例
-kanazawaTime列の時刻の分表示が細かいので丸める
-例えば、6時13分00秒は6時に、7時48分00秒は8時にしたい
-
-```
-# 元データを表示
-> head(hoge1)
-        date train        kanazawaTime          toyamaTime snow
-1 2016-01-19 3500E 2016-01-19 06:00:00 2016-01-19 06:19:00    0
-2 2016-01-19  552E 2016-01-19 06:13:00 2016-01-19 06:37:00    0
-3 2016-01-19 3502E 2016-01-19 07:00:00 2016-01-19 07:19:00    0
-4 2016-01-19 9536E 2016-01-19 07:08:00 2016-01-19 07:32:00    0
-5 2016-01-19  554E 2016-01-19 07:23:00 2016-01-19 07:47:00    0
-6 2016-01-19 3504E 2016-01-19 07:48:00 2016-01-19 08:07:00    0
->
-# 新しい列を作って、そこに時間で丸めた時刻を挿入
-> hoge1$kanazawaTimeWeather <- round(hoge1$kanazawaTime, "hours")
-> 
-# 処理結果を表示、kanazawaTimeWeather列に時間で丸まった時刻が挿入されていることが分かる
-> head(hoge1)
-        date train        kanazawaTime          toyamaTime snow kanazawaTimeWeather
-1 2016-01-19 3500E 2016-01-19 06:00:00 2016-01-19 06:19:00    0 2016-01-19 06:00:00
-2 2016-01-19  552E 2016-01-19 06:13:00 2016-01-19 06:37:00    0 2016-01-19 06:00:00
-3 2016-01-19 3502E 2016-01-19 07:00:00 2016-01-19 07:19:00    0 2016-01-19 07:00:00
-4 2016-01-19 9536E 2016-01-19 07:08:00 2016-01-19 07:32:00    0 2016-01-19 07:00:00
-5 2016-01-19  554E 2016-01-19 07:23:00 2016-01-19 07:47:00    0 2016-01-19 07:00:00
-6 2016-01-19 3504E 2016-01-19 07:48:00 2016-01-19 08:07:00    0 2016-01-19 08:00:00
-> 
-```
-
-以上
-
-
-# 金沢発、富山着の時刻を気象データにそろえるため、共通列を作る
-
-train.weather <- train.master
-
-train.weather$kanazawaTimeWeather <- round(train.weather$kanazawaTime, "hours")
-
-train.weather$toyamaTimeWeather <- round(train.weather$toyamaTime, "hours")
+# キャラクタ型を因子型に変更
 
 
 
-# 気象データからロケーション列を抜く
 
-weather.data.kanazawa.2016 <- weather.data.kanazawa.2016[, c(1, 3:16)]
+train
+k_windDirection
+k_cloudVlume
+t_windDirection
+t_cloudVlume
 
-weather.data.toyama.2016 <- weather.data.toyama.2016[, c(1, 3:16)]
 
 
-# 金沢、富山の気象データは列名がかぶるので、列名を変更する
+hoge$train <- as.factor(hoge$train)
+hoge$k_windDirection <- as.factor(hoge$k_windDirection)
+hoge$k_cloudVlume <- as.factor(hoge$k_cloudVlume)
+hoge$t_windDirection <- as.factor(hoge$t_windDirection)
+hoge$t_cloudVlume <- as.factor(hoge$t_cloudVlume)
 
-colnames(weather.data.kanazawa.2016) <-
+
+training.data$train <- as.factor(training.data$train)
+training.data$k_windDirection <- as.factor(training.data$k_windDirection)
+training.data$k_cloudVlume <- as.factor(training.data$k_cloudVlume)
+training.data$t_windDirection <- as.factor(training.data$t_windDirection)
+training.data$t_cloudVlume <- as.factor(training.data$t_cloudVlume)
+
+
+
+
+## 予測モデルを構築
+
+result <- randomForest(
+    training.data$snow ~.,
+    training.data,
+    na.action = na.exclude,
+    mtry = 1,
+    ntree = 500,
+    type = "regression"
+)
+
+
+
+result <- randomForest(
+    hoge$snow ~.,
+    hoge,
+    na.action = na.exclude,
+    mtry = 1,
+    ntree = 500,
+    type = "regression"
+)
+
+
+
+
+# テストデータを作成
+
+hoge1 <- test.data
+hoge2 <- diagram.data.kanazawa_to_toyama.t
+colnames(hoge1) <- c("V1", "date", "train")
+colnames(hoge2) <- c("kanazawaTime","toyamaTime","train")
+hoge3 <-
+    merge(hoge1, hoge2, by = "train", all.x = T)
+hoge3[order(hoge3$date, hoge3$kanazawaTime), ]
+hoge3$date <- as.Date(hoge3$date)
+hoge3$kanazawaTime <- as.POSIXlt(
+    paste(hoge3$date, hoge3$kanazawaTime)
+)
+hoge3$toyamaTime <- as.POSIXlt(
+    paste(hoge3$date, hoge3$toyamaTime)
+)
+hoge3 <- hoge3[order(hoge3$kanazawaTime), c(2, 3, 1, 4, 5)]
+rownames(hoge3) <- c(1:nrow(hoge3))
+test.data.master <- hoge3
+rm(hoge1)
+rm(hoge2)
+rm(hoge3)
+
+
+
+# テストデータを作成(weather.data部分)
+
+weather.data.kanazawa.2017 <- as.data.table(weather.data.kanazawa) %>%
+    filter(
+        str_detect(年月日時, "2017")
+    )
+
+weather.data.toyama.2017 <- as.data.table(weather.data.toyama) %>%
+    filter(
+        str_detect(年月日時, "2017")
+    )
+
+colnames(weather.data.kanazawa.2017) <-
+c("date", "location", "tempareture(℃)", "precipitation(mm)", "snowfall(cm)", "snow(cm)", "sunshineTime(h)", "windSpeed(m/s)", "windDirection", "amountOfIsolation(MJ/㎡)", "localAtomosphericPressur(hPa)", "seeLevelPressur(hPa)", "relativeHumidity(％)", "VaporPressur(hPa)", "cloudVlume(10minThan)", "dewPointTempareture(℃)", "weather", "visiblity(km)")
+
+colnames(weather.data.toyama.2017) <-
+c("date", "location", "tempareture(℃)", "precipitation(mm)", "snowfall(cm)", "snow(cm)", "sunshineTime(h)", "windSpeed(m/s)", "windDirection", "amountOfIsolation(MJ/㎡)", "localAtomosphericPressur(hPa)", "seeLevelPressur(hPa)", "relativeHumidity(％)", "VaporPressur(hPa)", "cloudVlume(10minThan)", "dewPointTempareture(℃)", "weather", "visiblity(km)")
+
+weather.data.kanazawa.2017$date <- as.POSIXlt(weather.data.kanazawa.2017$date)
+
+weather.data.toyama.2017$date <- as.POSIXlt(weather.data.toyama.2017$date)
+
+weather.data.kanazawa.2017 <- weather.data.kanazawa.2017[, c(1, 3:16)]
+
+weather.data.toyama.2017 <- weather.data.toyama.2017[, c(1, 3:16)]
+
+
+colnames(weather.data.kanazawa.2017) <-
 c("kanazawaTimeWeather", "k_tempareture(℃)", "k_precipitation(mm)", "k_snowfall(cm)", "k_snow(cm)", "k_sunshineTime(h)", "k_windSpeed(m/s)", "k_windDirection", "k_amountOfIsolation(MJ/㎡)", "k_localAtomosphericPressur(hPa)", "k_seeLevelPressur(hPa)", "k_relativeHumidity(％)", "k_VaporPressur(hPa)", "k_cloudVlume(10minThan)", "k_dewPointTempareture(℃)")
 
-colnames(weather.data.toyama.2016) <-
+colnames(weather.data.toyama.2017) <-
 c("toyamaTimeWeather", "t_tempareture(℃)", "t_precipitation(mm)", "t_snowfall(cm)", "t_snow(cm)", "t_sunshineTime(h)", "t_windSpeed(m/s)", "t_windDirection", "t_amountOfIsolation(MJ/㎡)", "t_localAtomosphericPressur(hPa)", "t_seeLevelPressur(hPa)", "t_relativeHumidity(％)", "t_VaporPressur(hPa)", "t_cloudVlume(10minThan)", "t_dewPointTempareture(℃)")
 
+hoge1 <- 
+test.data.master
+
+hoge1$kanazawaTimeWeather <- round(hoge1$kanazawaTime, "hours")
+
+hoge1$toyamaTimeWeather <- round(hoge1$toyamaTime, "hours")
 
 
-
-# 車両データに気象データをマージする
-
-
-hoge4 <- merge(hoge1, hoge2, by = "kanazawaTimeWeather", all.x = T)
-hoge5 <- merge(hoge4, hoge3, by = "toyamaTimeWeather", all.x = T)
+hoge1$kanazawaTimeWeather <- as.character(hoge1$kanazawaTimeWeather)
+hoge1$toyamaTimeWeather <- as.character(hoge1$toyamaTimeWeather)
 
 
-
-train.weather.kanazawa <- 
-merge(train.weather, weather.data.kanazawa.2016, by = "kanazawaTimeWeather", all.x = T)
+weather.data.kanazawa.2017$kanazawaTimeWeather <- as.character(weather.data.kanazawa.2017$kanazawaTimeWeather)
 
 
-train.weather.kanazawa.toyama <- 
-merge(train.weather.kanazawa, weather.data.toyama.2016, by = "toyamaTimeWeather", all.x = T)
+weather.data.toyama.2017$toyamaTimeWeather <- as.character(weather.data.toyama.2017$toyamaTimeWeather)
 
+test.weather.kanazawa <- 
+merge(hoge1, weather.data.kanazawa.2017, by = "kanazawaTimeWeather", all.x = T)
 
-train.weather
-weather.data.kanazawa.2016
-weather.data.toyama.2016
+test.weather.kanazawa.toyama <- 
+merge(test.weather.kanazawa, weather.data.toyama.2017, by = "toyamaTimeWeather", all.x = T)
 
+test.weather.kanazawa.toyama <-
+test.weather.kanazawa.toyama[, c(3:7, 2, 8:21, 1, 22:35)]
 
-train.weather.kanazawa <-
-    merge(train.weather, weather.data.kanazawa.2016, by = "kanazawaTimeWeather", all.x = T)
-
-train.weather.kanazawa.toyama <-
-    merge(train.weather.kanazawa, weather.data.toyama.2016, by = "toyamaTimeWeather", all.x = T)
-
-
-# 不要列の削除と整理
-
-train.weather.kanazawa.toyama
-
-
-> colnames(hoge)
- [1] "toyamaTimeWeather"               "kanazawaTimeWeather"             "date"                           
- [4] "train"                           "kanazawaTime"                    "toyamaTime"                     
- [7] "snow"                            "k_tempareture(℃)"               "k_precipitation(mm)"            
-[10] "k_snowfall(cm)"                  "k_snow(cm)"                      "k_sunshineTime(h)"              
-[13] "k_windSpeed(m/s)"                "k_windDirection"                 "k_amountOfIsolation(MJ/㎡)"     
-[16] "k_localAtomosphericPressur(hPa)" "k_seeLevelPressur(hPa)"          "k_relativeHumidity(％)"         
-[19] "k_VaporPressur(hPa)"             "k_cloudVlume(10minThan)"         "k_dewPointTempareture(℃)"      
-[22] "t_tempareture(℃)"               "t_precipitation(mm)"             "t_snowfall(cm)"                 
-[25] "t_snow(cm)"                      "t_sunshineTime(h)"               "t_windSpeed(m/s)"               
-[28] "t_windDirection"                 "t_amountOfIsolation(MJ/㎡)"      "t_localAtomosphericPressur(hPa)"
-[31] "t_seeLevelPressur(hPa)"          "t_relativeHumidity(％)"          "t_VaporPressur(hPa)"            
-[34] "t_cloudVlume(10minThan)"         "t_dewPointTempareture(℃)"      
-> 
-
-c(3:7, 2, 8:21, 1, 22:35)
-
-> hoge[, c(3:7, 2, 8:21, 1, 22:35)] %>% head()
-hoge <- hoge[, c(3:7, 2, 8:21, 1, 22:35)]
-
-
-train.weather.kanazawa.toyama <-
-train.weather.kanazawa.toyama[, c(3:7, 2, 8:21, 1, 22:35)]
-
-
-# 車両、気象のマスターデータ作成
-
-train.weather.master <- train.weather.kanazawa.toyama
-
-
-
-
-
+test.weather.master <- test.weather.kanazawa.toyama
 
 
 
