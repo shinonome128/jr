@@ -67,8 +67,39 @@ train.time.merge.sort <-
 rownames(train.time.merge.sort) <- c(1:nrow(train.time.merge.sort))
 
 
-# マスターデータの保存
+# train.masterの不要列の削除と入れ替え
 
-train.master <- train.time.merge.sort
+train.time.merge.sort.col <- train.time.merge.sort[, c(2, 1, 8, 9, 7)]
+
+
+# train.masterの列名の修正
+
+colnames(train.time.merge.sort.col) <- c("date","train","kanazawaTime","toyamaTime","snow")
+
+# train.masterの時刻操作
+
+train.time.merge.sort.col$date <- as.Date(train.time.merge.sort.col$date)
+
+train.time.merge.sort.col$kanazawaTime <- as.POSIXlt(
+    paste(train.time.merge.sort.col$date, train.time.merge.sort.col$kanazawaTime)
+)
+
+train.time.merge.sort.col$toyamaTime <- as.POSIXlt(
+    paste(train.time.merge.sort.col$date, train.time.merge.sort.col$toyamaTime)
+)
+
+# 出発順にソート
+
+train.time.merge.sort.col.sort <- train.time.merge.sort.col[order(train.time.merge.sort.col$kanazawaTime), ]
+
+
+# 行番号の振り直し
+
+rownames(train.time.merge.sort.col.sort) <- c(1:nrow(train.time.merge.sort.col.sort))
+
+
+# マスターデータの保存
+ 
+train.master <- train.time.merge.sort.col.sort
 
 
